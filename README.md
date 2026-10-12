@@ -27,3 +27,10 @@ cargo run --release --features randomorg -- --random-org
 ```
 
 If random.org is unavailable or returns an invalid response, the simulation falls back to operating-system randomness. This is a command-line, headless port; Three.js rendering and browser controls are not part of the Rust executable.
+
+# Links
+GitHub: https://github.com/Reden777/3DPendulum-rs
+
+crates.io: https://crates.io/crates/pendulum-3d
+
+Intention Repeater Forum: https://intentionrepeater.boards.net/
