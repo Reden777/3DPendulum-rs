@@ -1,7 +1,10 @@
 [package]
-name = "pendulum"
+name = "pendulum-3d"
 version = "0.1.0"
 edition = "2021"
+description = "A headless 3D pendulum for divination"
+license = "CC0-1.0"
+repository = "https://github.com/Reden777/3DPendulum-rs.git"
 
 [dependencies]
 rapier3d = "0.22"
