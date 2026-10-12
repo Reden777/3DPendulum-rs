@@ -1,4 +1,3 @@
-use rand::{Rng, SeedableRng};
 use rapier3d::prelude::*;
 use std::env;
 #[cfg(feature = "randomorg")]
@@ -92,7 +91,6 @@ fn entropy_seed(random_org: bool) -> u32 {
 struct Reading { avg_x: f32, avg_z: f32, answer: &'static str }
 
 fn simulate(c: &Config, seed: u32) -> Reading {
-    let mut rng = rand::rngs::StdRng::seed_from_u64(seed as u64);
     let mut pipeline = PhysicsPipeline::new();
     let gravity = vector![0.0, -9.81, 0.0];
     let integration = IntegrationParameters { dt: DT, ..IntegrationParameters::default() };
@@ -104,17 +102,25 @@ fn simulate(c: &Config, seed: u32) -> Reading {
     let mut joints = ImpulseJointSet::new();
     let mut multibody = MultibodyJointSet::new();
     let mut ccd = CCDSolver::new();
+    let pivot = vector![0.0, 1.8, 0.0];
     let x = (0.52_f32).min(c.length * 0.28);
     let y = 1.8 - (c.length * c.length - x * x).max(0.01).sqrt();
     let body = RigidBodyBuilder::dynamic().translation(vector![x, y, 0.0])
         .linear_damping(0.0).angular_damping(0.55).additional_mass(c.mass)
         .can_sleep(false).build();
     let handle = bodies.insert(body);
-    colliders.insert_with_parent(ColliderBuilder::ball(0.24).density(1.0).build(), handle, &mut bodies);
+    colliders.insert_with_parent(ColliderBuilder::ball(0.015).density(1.0).build(), handle, &mut bodies);
     bodies[handle].set_linvel(vector![0.42, 0.127, 0.0], true);
+    let anchor = bodies.insert(RigidBodyBuilder::fixed().translation(pivot).build());
+    let bob_to_pivot = pivot - *bodies[handle].translation();
+    let joint = SphericalJointBuilder::new()
+        .local_anchor1(point![0.0, 0.0, 0.0])
+        .local_anchor2(point![bob_to_pivot.x, bob_to_pivot.y, bob_to_pivot.z]);
+    joints.insert(anchor, handle, joint, true);
     let steps = (c.duration / DT).ceil() as usize;
     let mut sum_x = 0.0;
     let mut sum_z = 0.0;
+    let mut sum_spin = 0.0;
     for i in 0..steps {
         let t = i as f32 * DT;
         let phase = (seed as f32 / u32::MAX as f32) * 10.0;
@@ -130,41 +136,30 @@ fn simulate(c: &Config, seed: u32) -> Reading {
         pipeline.step(&gravity, &integration, &mut islands, &mut broad, &mut narrow,
             &mut bodies, &mut colliders, &mut joints, &mut multibody, &mut ccd,
             None, &(), &());
-        enforce_cord(&mut bodies[handle], c.length);
         let p = *bodies[handle].translation();
-        if !p.x.is_finite() || !p.y.is_finite() || !p.z.is_finite()
-            || (p - vector![0.0, 1.8, 0.0]).norm() > c.length * 1.45 || p.y < -2.65 {
-            reset(&mut bodies[handle], c.length);
-        }
-        let p = bodies[handle].translation();
         sum_x += p.x;
         sum_z += p.z;
+        let radius = p - pivot;
+        let velocity = *bodies[handle].linvel();
+        sum_spin += radius.x * velocity.z - radius.z * velocity.x;
     }
     let avg_x = sum_x / steps as f32;
     let avg_z = sum_z / steps as f32;
-    let v = bodies[handle].linvel();
-    let angle = (avg_x + v.x * 0.22).atan2(avg_z + v.z * 0.22);
-    let motion = (angle.sin() + (angle * 0.73).cos()) * 0.5;
-    let chance = ((motion + 1.0) * 0.34 + rng.gen::<f32>() * 0.32).clamp(0.0, 0.999999);
-    let answer = if chance < 0.48 { "YES" } else if chance < 0.84 { "NO" } else { "UNCLEAR" };
+    let p = *bodies[handle].translation() - pivot;
+    let v = *bodies[handle].linvel();
+    let avg_spin = sum_spin / steps as f32;
+    let answer = if !p.norm().is_finite() || !v.norm().is_finite() {
+        "UNCLEAR"
+    } else if v.norm() < 0.02 {
+        "UNCLEAR"
+    } else if avg_spin > 0.015 {
+        "YES"
+    } else if avg_spin < -0.015 {
+        "NO"
+    } else if p.x.abs() > p.z.abs() {
+        "NO"
+    } else {
+        "YES"
+    };
     Reading { avg_x, avg_z, answer }
-}
-
-fn enforce_cord(body: &mut RigidBody, length: f32) {
-    let pivot = vector![0.0, 1.8, 0.0];
-    let radius = *body.translation() - pivot;
-    let norm = radius.norm();
-    if norm < 1.0e-4 { return; }
-    let direction = radius / norm;
-    body.set_translation(pivot + direction * length, true);
-    let velocity = *body.linvel();
-    body.set_linvel(velocity - direction * velocity.dot(&direction), true);
-}
-
-fn reset(body: &mut RigidBody, length: f32) {
-    let x = 0.52_f32.min(length * 0.28);
-    let y = 1.8 - (length * length - x * x).max(0.01).sqrt();
-    body.set_translation(vector![x, y, 0.0], true);
-    body.set_linvel(vector![0.0, 0.0, 0.0], true);
-    body.set_angvel(vector![0.0, 0.0, 0.0], true);
 }
