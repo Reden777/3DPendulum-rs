@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Oracle Pendulum</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="stage" aria-label="3D pendulum simulation">
+        <div id="canvas"></div>
+        <div class="brand"><span class="brand-mark">⌁</span><div><strong>ORACLE</strong><small>PHYSICAL PENDULUM</small></div></div>
+        <div class="readout"><span class="pulse"></span><span id="state">AWAITING INTENTION</span></div>
+        <div class="answer-card" id="answer-card">
+          <span class="eyebrow">CURRENT READING</span>
+          <strong id="answer">—</strong>
+          <span id="detail">Set your question, then release the pendulum.</span>
+        </div>
+        <div class="hint">DRAG TO ORBIT &nbsp;·&nbsp; SCROLL TO ZOOM</div>
+      </section>
+
+      <aside class="control-panel">
+        <header><p>THE INSTRUMENT</p><h1>Find the<br><em>movement.</em></h1><span>Each reading emerges from a live physics simulation.</span></header>
+        <div class="question-wrap"><label for="question">YOUR QUESTION</label><input id="question" type="text" placeholder="What do you seek?" autocomplete="off" /></div>
+        <div class="actions"><button id="release" class="primary">Release pendulum <span>→</span></button><button id="reset" class="ghost" title="Reset simulation">↺</button></div>
+        <section class="controls">
+          <div class="section-title">PHYSICAL FIELD <button class="collapse" aria-label="Toggle physics controls">−</button></div>
+          <div class="control-grid">
+            <label class="slider-row">CORD LENGTH <output id="length-out">1.8 m</output><input id="length" type="range" min="0.8" max="3" step="0.1" value="1.8"></label>
+            <label class="slider-row">BOB MASS <output id="mass-out">85 g</output><input id="mass" type="range" min="20" max="180" step="5" value="85"></label>
+            <label class="slider-row">AIR DRAG <output id="drag-out">0.18</output><input id="drag" type="range" min="0" max="0.8" step="0.01" value="0.18"></label>
+            <label class="slider-row">WIND SPEED <output id="wind-out">0.0 m/s</output><input id="wind" type="range" min="0" max="4" step="0.1" value="0"></label>
+          </div>
+        </section>
+        <section class="randomness">
+          <div><span>ENTROPY SOURCE</span><strong id="entropy-label">Local system noise</strong></div>
+          <label class="toggle"><input id="randomorg" type="checkbox"><span></span></label>
+        </section>
+        <footer><span id="engine-status">● LIVE PHYSICS</span><span>GRAVITY 9.81</span></footer>
+      </aside>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
