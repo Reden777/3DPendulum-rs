@@ -18,8 +18,8 @@ struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Self { length: 1.8, mass: 0.085, drag: 0.18, wind: 0.0,
-            duration: 6.2, question: String::new(), random_org: false }
+        Self { length: 0.28, mass: 0.085, drag: 0.12, wind: 0.05,
+            duration: 8.0, question: String::new(), random_org: false }
     }
 }
 
