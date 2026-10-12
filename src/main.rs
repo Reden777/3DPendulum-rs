@@ -1,6 +1,8 @@
 use rand::{Rng, SeedableRng};
 use rapier3d::prelude::*;
-use std::{env, time::Duration};
+use std::env;
+#[cfg(feature = "randomorg")]
+use std::time::Duration;
 
 const DT: f32 = 1.0 / 120.0;
 
@@ -95,7 +97,7 @@ fn simulate(c: &Config, seed: u32) -> Reading {
     let gravity = vector![0.0, -9.81, 0.0];
     let integration = IntegrationParameters { dt: DT, ..IntegrationParameters::default() };
     let mut islands = IslandManager::new();
-    let mut broad = BroadPhase::new();
+    let mut broad = BroadPhaseMultiSap::new();
     let mut narrow = NarrowPhase::new();
     let mut bodies = RigidBodySet::new();
     let mut colliders = ColliderSet::new();
@@ -126,11 +128,12 @@ fn simulate(c: &Config, seed: u32) -> Reading {
             (t * 1.31 + phase * 0.5).cos() * flutter];
         bodies[handle].add_force(force, true);
         pipeline.step(&gravity, &integration, &mut islands, &mut broad, &mut narrow,
-            &mut bodies, &mut colliders, &mut joints, &mut multibody, &mut ccd, &(), &());
+            &mut bodies, &mut colliders, &mut joints, &mut multibody, &mut ccd,
+            None, &(), &());
         enforce_cord(&mut bodies[handle], c.length);
         let p = *bodies[handle].translation();
         if !p.x.is_finite() || !p.y.is_finite() || !p.z.is_finite()
-            || (p - point![0.0, 1.8, 0.0]).norm() > c.length * 1.45 || p.y < -2.65 {
+            || (p - vector![0.0, 1.8, 0.0]).norm() > c.length * 1.45 || p.y < -2.65 {
             reset(&mut bodies[handle], c.length);
         }
         let p = bodies[handle].translation();
@@ -148,7 +151,7 @@ fn simulate(c: &Config, seed: u32) -> Reading {
 }
 
 fn enforce_cord(body: &mut RigidBody, length: f32) {
-    let pivot = point![0.0, 1.8, 0.0];
+    let pivot = vector![0.0, 1.8, 0.0];
     let radius = *body.translation() - pivot;
     let norm = radius.norm();
     if norm < 1.0e-4 { return; }
