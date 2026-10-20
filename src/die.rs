@@ -94,8 +94,11 @@ fn mix_intention(seed: u64, intention: Option<&str>) -> u64 {
 fn roll(config: &Config, seed: u64) -> usize {
     let mut rng = StdRng::seed_from_u64(seed);
     let n = config.sides - 2; // An n-gonal prism has n side faces and two ends.
-    let radius = 0.45_f32;
-    let half_height = 0.45_f32;
+    let radius = 0.02_f32; // 2 cm circumradius, appropriate for a tabletop die.
+    let flat_dist = radius * (std::f32::consts::PI / n as f32).cos();
+    // For d6 (n=4), this makes a cube. Other counts use a practical balance
+    // between the end faces and side faces; it is not a guarantee of statistical fairness.
+    let half_height = flat_dist * (2.0 / n as f32).sqrt().clamp(0.6, 1.2);
     let mut vertices = Vec::with_capacity(2 * n);
     for y in [-half_height, half_height] {
         for i in 0..n {
@@ -117,10 +120,10 @@ fn roll(config: &Config, seed: u64) -> usize {
     let mut multibody = MultibodyJointSet::new();
     let mut ccd = CCDSolver::new();
 
-    let ground = bodies.insert(RigidBodyBuilder::fixed().translation(vector![0.0, -0.08, 0.0]).build());
-    colliders.insert_with_parent(ColliderBuilder::cuboid(10.0, 0.08, 10.0).friction(0.75).restitution(0.18).build(), ground, &mut bodies);
+    let ground = bodies.insert(RigidBodyBuilder::fixed().translation(vector![0.0, -0.005, 0.0]).build());
+    colliders.insert_with_parent(ColliderBuilder::cuboid(1.0, 0.005, 1.0).friction(0.75).restitution(0.18).build(), ground, &mut bodies);
     let body = RigidBodyBuilder::dynamic()
-        .translation(vector![0.0, 1.15, 0.0])
+        .translation(vector![0.0, 0.25, 0.0])
         .rotation(vector![rng.gen_range(-2.8..2.8), rng.gen_range(-2.8..2.8), rng.gen_range(-2.8..2.8)])
         .linvel(vector![rng.gen_range(-1.8..1.8), rng.gen_range(-0.5..1.5), rng.gen_range(-1.8..1.8)])
         .angvel(vector![rng.gen_range(-9.0..9.0), rng.gen_range(-9.0..9.0), rng.gen_range(-9.0..9.0)])
@@ -129,7 +132,7 @@ fn roll(config: &Config, seed: u64) -> usize {
         .can_sleep(false)
         .build();
     let handle = bodies.insert(body);
-    colliders.insert_with_parent(hull.friction(0.65).restitution(0.12).density(1.0).build(), handle, &mut bodies);
+    colliders.insert_with_parent(hull.friction(0.65).restitution(0.12).density(1150.0).build(), handle, &mut bodies);
 
     let steps = (config.duration / DT).ceil() as usize;
     for _ in 0..steps {

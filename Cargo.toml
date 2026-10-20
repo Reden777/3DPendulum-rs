@@ -1,9 +1,9 @@
 [package]
 name = "pendulum-3d"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
-description = "A headless 3D pendulum for divination"
-license = "CC0-1.0"
+description = "A headless 3D pendulum and die for divination"
+license = "0BSD"
 repository = "https://github.com/Reden777/3DPendulum-rs.git"
 
 [[bin]]
