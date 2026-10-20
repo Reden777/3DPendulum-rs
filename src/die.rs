@@ -58,10 +58,15 @@ fn entropy_seed(random_org: bool) -> u64 {
     if random_org {
         #[cfg(feature = "randomorg")]
         {
-            if let Ok(response) = ureq::get("https://www.random.org/integers/?num=1&min=1&max=4294967295&col=1&base=10&format=plain&rnd=new")
+            // The unauthenticated integer endpoint caps each value at 1e9.
+            // Two values provide enough entropy for a 64-bit seed.
+            if let Ok(response) = ureq::get("https://www.random.org/integers/?num=2&min=0&max=1000000000&col=1&base=10&format=plain&rnd=new")
                 .timeout(Duration::from_secs(5)).call() {
                 if let Ok(value) = response.into_string() {
-                    if let Ok(seed) = value.trim().parse::<u32>() { return u64::from(seed); }
+                    let mut numbers = value.split_whitespace().filter_map(|part| part.parse::<u32>().ok());
+                    if let (Some(high), Some(low)) = (numbers.next(), numbers.next()) {
+                        return (u64::from(high) << 32) | u64::from(low);
+                    }
                 }
             }
             eprintln!("random.org unavailable; using operating-system randomness");
