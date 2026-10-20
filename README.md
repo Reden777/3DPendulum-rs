@@ -20,10 +20,10 @@ Options:
 --random-org          Request a seed from random.org, with OS randomness fallback
 ```
 
-The separate `die` executable simulates a rolling die. Its default geometry is a
-prism; select `--shape bipyramid` for an isohedral bipyramid with any even
-number of faces (for example, `cargo run --release --bin die -- --shape
-bipyramid --sides 50`). Bipyramid face counts must be even and at least six.
+The separate `die` executable simulates a rolling die. Its default geometry is
+a bipyramid, an isohedral shape with any even number of faces (for example,
+`cargo run --release --bin die -- --sides 50`). Use `--shape prism` for a
+prism. Bipyramid face counts must be even and at least six.
 Very high face counts are geometrically valid but are not practically fair
 physical dice: their face wells become shallow and Rapier's contact solver may
 not reliably distinguish neighboring faces. A simulated result is therefore

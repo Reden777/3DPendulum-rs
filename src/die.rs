@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn parse_args() -> Result<Config, Box<dyn std::error::Error>> {
-    let mut config = Config { sides: 6, shape: Shape::Prism, duration: 8.0, seed: None, intention: None, random_org: false };
+    let mut config = Config { sides: 6, shape: Shape::Bipyramid, duration: 8.0, seed: None, intention: None, random_org: false };
     let mut args = env::args().skip(1);
     while let Some(arg) = args.next() {
         let mut value = || -> Result<String, Box<dyn std::error::Error>> {
@@ -49,7 +49,7 @@ fn parse_args() -> Result<Config, Box<dyn std::error::Error>> {
             "--intention" | "-i" => config.intention = Some(value()?),
             "--random-org" => config.random_org = true,
             "--help" | "-h" => {
-                println!("Physically simulated polygonal die\n  --sides N       Number of faces/outcomes (default 6)\n  --shape NAME    prism (default) or bipyramid (even counts)\n  --duration SEC  Simulation time (default 8)\n  --seed N        Repeatable random seed\n  --intention, -i TEXT  Question or intention for the roll\n  --random-org    Use random.org (build with --features randomorg)");
+                println!("Physically simulated polygonal die\n  --sides N       Number of faces/outcomes (default 6)\n  --shape NAME    bipyramid (default) or prism\n  --duration SEC  Simulation time (default 8)\n  --seed N        Repeatable random seed\n  --intention, -i TEXT  Question or intention for the roll\n  --random-org    Use random.org (build with --features randomorg)");
                 std::process::exit(0);
             }
             _ => return Err(format!("unknown argument: {arg}").into()),
@@ -152,13 +152,15 @@ fn roll(config: &Config, seed: u64) -> usize {
                 let angle = std::f32::consts::TAU * i as f32 / n as f32;
                 vertices.push(point![radius * angle.cos(), 0.0, radius * angle.sin()]);
             }
+            // Every face has the same normal pitch. The distance from the
+            // center to an equator edge is r*sin(pi/n), not the prism apothem.
+            let face_pitch = radius * (std::f32::consts::PI / n as f32).sin();
             for i in 0..n {
-                let a = std::f32::consts::TAU * (i as f32 + 0.5) / n as f32;
-                let b = std::f32::consts::TAU * ((i + 1) as f32) / n as f32;
-                let upper = vector![(a.cos() + b.cos()) * half_height, radius * (b.sin() - a.sin()), (a.sin() + b.sin()) * half_height];
-                let lower = vector![(a.cos() + b.cos()) * -half_height, radius * (a.sin() - b.sin()), (a.sin() + b.sin()) * -half_height];
-                normals.push(upper.normalize());
-                normals.push(lower.normalize());
+                let angle = std::f32::consts::TAU * (i as f32 + 0.5) / n as f32;
+                let nx = angle.cos() * half_height;
+                let nz = angle.sin() * half_height;
+                normals.push(vector![nx, face_pitch, nz].normalize());
+                normals.push(vector![nx, -face_pitch, nz].normalize());
             }
             (vertices, normals)
         }
