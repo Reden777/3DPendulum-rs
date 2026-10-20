@@ -1,6 +1,6 @@
 [package]
 name = "pendulum-3d"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "A headless 3D pendulum for divination"
 license = "CC0-1.0"

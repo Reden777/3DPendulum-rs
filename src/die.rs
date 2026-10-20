@@ -1,6 +1,8 @@
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use rapier3d::prelude::*;
 use std::env;
+#[cfg(feature = "randomorg")]
+use std::time::Duration;
 
 const DT: f32 = 1.0 / 120.0;
 
@@ -8,22 +10,23 @@ struct Config {
     sides: usize,
     duration: f32,
     seed: Option<u64>,
+    intention: Option<String>,
+    random_org: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = parse_args()?;
-    let seed = config.seed.unwrap_or_else(|| {
-        let mut bytes = [0_u8; 8];
-        getrandom::getrandom(&mut bytes).expect("operating-system random source unavailable");
-        u64::from_ne_bytes(bytes)
-    });
-    let result = roll(&config, seed);
+    let seed = config.seed.unwrap_or_else(|| entropy_seed(config.random_org));
+    let result = roll(&config, mix_intention(seed, config.intention.as_deref()));
+    if let Some(intention) = &config.intention {
+        println!("Intention: {intention}");
+    }
     println!("d{} result: {}", config.sides, result);
     Ok(())
 }
 
 fn parse_args() -> Result<Config, Box<dyn std::error::Error>> {
-    let mut config = Config { sides: 6, duration: 8.0, seed: None };
+    let mut config = Config { sides: 6, duration: 8.0, seed: None, intention: None, random_org: false };
     let mut args = env::args().skip(1);
     while let Some(arg) = args.next() {
         let mut value = || -> Result<String, Box<dyn std::error::Error>> {
@@ -33,8 +36,10 @@ fn parse_args() -> Result<Config, Box<dyn std::error::Error>> {
             "--sides" | "-s" => config.sides = value()?.parse()?,
             "--duration" | "-d" => config.duration = value()?.parse()?,
             "--seed" => config.seed = Some(value()?.parse()?),
+            "--intention" | "-i" => config.intention = Some(value()?),
+            "--random-org" => config.random_org = true,
             "--help" | "-h" => {
-                println!("Physically simulated polygonal die\n  --sides N      Number of faces/outcomes (5 or more; default 6)\n  --duration SEC Simulation time (default 8)\n  --seed N       Repeatable random seed");
+                println!("Physically simulated polygonal die\n  --sides N       Number of faces/outcomes (5 or more; default 6)\n  --duration SEC  Simulation time (default 8)\n  --seed N        Repeatable random seed\n  --intention, -i TEXT  Question or intention for the roll\n  --random-org    Use random.org (build with --features randomorg)");
                 std::process::exit(0);
             }
             _ => return Err(format!("unknown argument: {arg}").into()),
@@ -47,6 +52,38 @@ fn parse_args() -> Result<Config, Box<dyn std::error::Error>> {
         return Err("--duration must be a finite positive number".into());
     }
     Ok(config)
+}
+
+fn entropy_seed(random_org: bool) -> u64 {
+    if random_org {
+        #[cfg(feature = "randomorg")]
+        {
+            if let Ok(response) = ureq::get("https://www.random.org/integers/?num=1&min=1&max=4294967295&col=1&base=10&format=plain&rnd=new")
+                .timeout(Duration::from_secs(5)).call() {
+                if let Ok(value) = response.into_string() {
+                    if let Ok(seed) = value.trim().parse::<u32>() { return u64::from(seed); }
+                }
+            }
+            eprintln!("random.org unavailable; using operating-system randomness");
+        }
+        #[cfg(not(feature = "randomorg"))]
+        eprintln!("random.org support is disabled; build with --features randomorg. Using operating-system randomness.");
+    }
+    let mut bytes = [0_u8; 8];
+    getrandom::getrandom(&mut bytes).expect("operating-system random source unavailable");
+    u64::from_ne_bytes(bytes)
+}
+
+// Fold every intention byte into the seed while retaining the random seed as
+// the source of per-roll variation. This is a small FNV-1a style mixer.
+fn mix_intention(seed: u64, intention: Option<&str>) -> u64 {
+    let Some(intention) = intention else { return seed };
+    let mut mixed = seed ^ 0xcbf29ce484222325;
+    for byte in intention.bytes() {
+        mixed ^= u64::from(byte);
+        mixed = mixed.wrapping_mul(0x100000001b3);
+    }
+    mixed
 }
 
 fn roll(config: &Config, seed: u64) -> usize {
