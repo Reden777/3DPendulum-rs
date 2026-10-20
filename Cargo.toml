@@ -6,6 +6,14 @@ description = "A headless 3D pendulum for divination"
 license = "CC0-1.0"
 repository = "https://github.com/Reden777/3DPendulum-rs.git"
 
+[[bin]]
+name = "pendulum-3d"
+path = "src/main.rs"
+
+[[bin]]
+name = "die"
+path = "src/die.rs"
+
 [dependencies]
 rapier3d = "0.22"
 rand = "0.8"
