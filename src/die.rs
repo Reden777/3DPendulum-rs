@@ -96,9 +96,14 @@ fn roll(config: &Config, seed: u64) -> usize {
     let n = config.sides - 2; // An n-gonal prism has n side faces and two ends.
     let radius = 0.02_f32; // 2 cm circumradius, appropriate for a tabletop die.
     let flat_dist = radius * (std::f32::consts::PI / n as f32).cos();
-    // For d6 (n=4), this makes a cube. Other counts use a practical balance
-    // between the end faces and side faces; it is not a guarantee of statistical fairness.
-    let half_height = flat_dist * (2.0 / n as f32).sqrt().clamp(0.6, 1.2);
+    // A d6 is an exact cube. Other counts use a practical aspect ratio between
+    // end faces and side faces; this does not guarantee statistically fair rolls.
+    let aspect = if n == 4 {
+        1.0
+    } else {
+        (4.0 / n as f32).sqrt().clamp(0.6, 1.4)
+    };
+    let half_height = flat_dist * aspect;
     let mut vertices = Vec::with_capacity(2 * n);
     for y in [-half_height, half_height] {
         for i in 0..n {
@@ -120,8 +125,10 @@ fn roll(config: &Config, seed: u64) -> usize {
     let mut multibody = MultibodyJointSet::new();
     let mut ccd = CCDSolver::new();
 
-    let ground = bodies.insert(RigidBodyBuilder::fixed().translation(vector![0.0, -0.005, 0.0]).build());
-    colliders.insert_with_parent(ColliderBuilder::cuboid(1.0, 0.005, 1.0).friction(0.75).restitution(0.18).build(), ground, &mut bodies);
+    // One-meter slab centered at -0.5 m keeps the tabletop at y=0 and deep
+    // enough to contain the die if a fast step ever passes the top surface.
+    let ground = bodies.insert(RigidBodyBuilder::fixed().translation(vector![0.0, -0.5, 0.0]).build());
+    colliders.insert_with_parent(ColliderBuilder::cuboid(1.0, 0.5, 1.0).friction(0.75).restitution(0.18).build(), ground, &mut bodies);
     let body = RigidBodyBuilder::dynamic()
         .translation(vector![0.0, 0.25, 0.0])
         .rotation(vector![rng.gen_range(-2.8..2.8), rng.gen_range(-2.8..2.8), rng.gen_range(-2.8..2.8)])
